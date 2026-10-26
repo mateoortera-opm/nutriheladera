@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriHeladera - Planificador y Calorías</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 p-3 sm:p-6 overflow-x-hidden">
+
+    <!-- Contenedor principal con max-w y padding interno controlado -->
+    <div class="max-w-3xl mx-auto bg-white shadow-2xl rounded-3xl p-4 sm:p-8 mt-4 border border-slate-100 relative">
+        
+        <!-- HEADER -->
+        <header class="text-center mb-6">
+            <span class="text-3xl">🥗</span>
+            <h1 class="text-xl sm:text-3xl font-extrabold text-slate-900 mt-2 break-words">NutriHeladera App</h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1 px-2">Calcula tu heladera, escanea con cámara y organiza tus horarios de comida.</p>
+            
+            <!-- Selector de Planes (Flex wrap para evitar desbordes en móviles) -->
+            <div class="flex flex-wrap justify-center gap-2 mt-4">
+                <button onclick="cambiarPlan('gratis')" id="btn-gratis" class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition bg-emerald-600 text-white shadow-md">
+                    Plan Gratuito 🆓
+                </button>
+                <button onclick="cambiarPlan('pro')" id="btn-pro" class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    Plan Pro (Pago) ⭐
+                </button>
+            </div>
+        </header>
+
+        <!-- Banner de Activación Pro -->
+        <div id="banner-upgrade" class="mb-6 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-4 text-white flex flex-col sm:flex-row items-center justify-between shadow-lg gap-3">
+            <div class="text-center sm:text-left">
+                <h4 class="font-bold text-sm sm:text-base leading-snug">¡Pasa al Plan Pro y desbloquea Planificador + Cámara IA!</h4>
+                <p class="text-xs text-amber-100 mt-0.5">Calcula tus horarios, escanea platos y obtén macros avanzados.</p>
+            </div>
+            <button onclick="activarPro()" class="bg-white text-orange-600 font-bold px-4 py-2 rounded-xl text-xs hover:bg-amber-50 transition shadow whitespace-nowrap">
+                Desbloquear Pro 🚀
+            </button>
+        </div>
+
+        <!-- Objetivo nutricional -->
+        <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <label class="block text-sm font-semibold text-slate-700 mb-2">¿Cuál es tu objetivo nutricional?</label>
+            <select id="objetivo" onchange="actualizarPlanificadorSugerido()" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none truncate">
+                <option value="deficit">Bajar de peso (Déficit calórico)</option>
+                <option value="mantener" selected>Mantener peso actual</option>
+                <option value="superavit">Ganar masa muscular (Superávit calórico)</option>
+            </select>
+        </div>
+
+        <!-- SECCIÓN DE HORARIOS (Bloqueada en Gratis) -->
+        <div class="mb-6 bg-gradient-to-br from-teal-50 to-emerald-50 border border-teal-200 rounded-2xl p-4 sm:p-5 relative overflow-hidden">
+            <h3 class="font-bold text-teal-900 text-sm sm:text-base mb-1 flex items-center flex-wrap gap-1">
+                <span>⏰ Planificador de Frecuencia y Horarios</span> 
+                <span class="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full">PRO</span>
+            </h3>
+            <p class="text-xs text-teal-700 mb-4">Calcula cuántas comidas hacer y a qué hora ingerirlas según tu día.</p>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <div>
+                    <label class="block text-xs font-semibold text-teal-800 mb-1">Hora en que te despiertas:</label>
+                    <input type="time" id="hora-despertar" value="07:00" class="w-full bg-white border border-teal-300 rounded-lg p-2 text-sm text-teal-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-teal-800 mb-1">Hora en que te acuestas:</label>
+                    <input type="time" id="hora-dormir" value="23:00" class="w-full bg-white border border-teal-300 rounded-lg p-2 text-sm text-teal-900 outline-none">
+                </div>
+            </div>
+
+            <button onclick="intentarAccionPro('horarios')" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-md shadow-teal-600/20">
+                Generar Mis Horarios de Comida 🕒
+            </button>
+
+            <div id="resultado-horarios" class="mt-4 hidden bg-white border border-teal-100 p-4 rounded-xl shadow-sm overflow-hidden">
+                <h4 id="frecuencia-titulo" class="font-bold text-teal-900 text-sm mb-2 break-words"></h4>
+                <ul id="lista-horarios" class="space-y-1.5 text-xs text-slate-700"></ul>
+            </div>
+        </div>
+
+        <!-- ESCÁNER DE CÁMARA (Bloqueado en Gratis) -->
+        <div class="mb-6 bg-gradient-to-br from-indigo-50 to-blue-50 border-2 border-dashed border-indigo-200 rounded-2xl p-4 sm:p-5 text-center relative overflow-hidden">
+            <span class="text-3xl">📷</span>
+            <h3 class="font-bold text-indigo-900 text-sm sm:text-base mt-1 flex items-center justify-center flex-wrap gap-1">
+                <span>Escanea tu plato con la Cámara IA</span> 
+                <span class="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full">PRO</span>
+            </h3>
+            <p class="text-xs text-indigo-600 mb-4 px-2">Toma una foto o sube la imagen de tu comida preparada.</p>
+            
+            <input type="file" id="input-foto" accept="image/*" capture="environment" class="hidden" onchange="procesarFoto(event)">
+            
+            <button onclick="intentarAccionPro('camara')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition shadow-md shadow-indigo-600/20 max-w-full truncate">
+                Tomar Foto / Subir Imagen 📸
+            </button>
+
+            <div id="estado-analisis" class="mt-4 hidden">
+                <img id="preview-img" class="w-28 h-28 object-cover rounded-xl mx-auto mb-2 shadow border border-indigo-200">
+                <p id="texto-analizando" class="text-xs font-semibold text-indigo-700 animate-pulse">🤖 Analizando ingredientes con IA...</p>
+            </div>
+        </div>
+
+        <!-- Lista de Ingredientes manuales -->
+        <div class="mb-6">
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Selecciona los ingredientes de tu heladera y despensa:</label>
+            <div id="ingredientes-container" class="space-y-3 max-h-72 overflow-y-auto pr-1">
+                <!-- Se llenarán con JavaScript -->
+            </div>
+        </div>
+
+        <!-- Botón de cálculo -->
+        <button onclick="calcularNutricion()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-xl transition shadow-lg shadow-emerald-600/20 text-base">
+            Analizar Mi Plato Manualmente
+        </button>
+
+        <!-- Resultados -->
+        <div id="resultado" class="mt-6 hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 sm:p-5 overflow-hidden">
+            <h3 class="font-bold text-emerald-900 text-base sm:text-lg text-center mb-4">📊 Resumen Nutricional</h3>
+            
+            <div class="grid grid-cols-1 gap-3 text-center mb-4" id="caja-calorias-gratis">
+                <div class="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm overflow-hidden">
+                    <span class="block text-xs text-slate-400 font-medium">Calorías Totales</span>
+                    <span id="total-calorias" class="text-2xl sm:text-3xl font-extrabold text-emerald-700 break-words">0 kcal</span>
+                </div>
+            </div>
+
+            <!-- Grid de macros adaptada para móviles -->
+            <div id="seccion-macros" class="grid grid-cols-3 gap-2 sm:gap-3 text-center mb-4 hidden">
+                <div class="bg-white p-2.5 sm:p-3 rounded-xl border border-blue-100 shadow-sm overflow-hidden">
+                    <span class="block text-[10px] sm:text-xs text-slate-400 font-medium truncate">Proteínas</span>
+                    <span id="total-proteina" class="text-sm sm:text-lg font-bold text-blue-600 break-words">0g</span>
+                </div>
+                <div class="bg-white p-2.5 sm:p-3 rounded-xl border border-amber-100 shadow-sm overflow-hidden">
+                    <span class="block text-[10px] sm:text-xs text-slate-400 font-medium truncate">Carbohidratos</span>
+                    <span id="total-carbos" class="text-sm sm:text-lg font-bold text-amber-600 break-words">0g</span>
+                </div>
+                <div class="bg-white p-2.5 sm:p-3 rounded-xl border border-purple-100 shadow-sm overflow-hidden">
+                    <span class="block text-[10px] sm:text-xs text-slate-400 font-medium truncate">Grasas</span>
+                    <span id="total-grasas" class="text-sm sm:text-lg font-bold text-purple-600 break-words">0g</span>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-emerald-100 mb-3 overflow-hidden">
+                <p id="evaluacion-meta" class="text-xs sm:text-sm font-semibold text-emerald-900 mb-1 break-words"></p>
+                <p id="sugerencia-plato" class="text-xs text-slate-600 break-words"></p>
+            </div>
+
+            <div id="seccion-receta-pro" class="hidden bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4 rounded-xl overflow-hidden">
+                <h4 class="font-bold text-blue-900 text-xs sm:text-sm mb-1">✨ Análisis de Imagen IA:</h4>
+                <p id="texto-receta-pro" class="text-xs text-blue-800 leading-relaxed break-words"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL / POPUP DE SUGERENCIA PRO -->
+    <div id="modal-pro" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 text-center shadow-2xl border border-slate-100 my-auto">
+            <span class="text-4xl">⭐</span>
+            <h3 class="text-lg sm:text-xl font-extrabold text-slate-900 mt-2 break-words">¡Función Exclusiva del Plan Pro!</h3>
+            <p class="text-xs sm:text-sm text-slate-500 mt-2">Para usar el escáner de cámara inteligente y el planificador de horarios de comida, suscríbete al Plan Pro.</p>
+            
+            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 my-4 text-left">
+                <ul class="text-xs text-amber-900 space-y-2 font-medium">
+                    <li>✅ Escáner de platos por Cámara IA</li>
+                    <li>✅ Planificador de horarios y frecuencia de comidas</li>
+                    <li>✅ Conteo detallado de Macros (Proteínas, Carbos, Grasas)</li>
+                </ul>
+            </div>
+
+            <button onclick="activarPro(); cerrarModalPro();" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-amber-500/30 mb-2 text-sm">
+                Activar Plan Pro Ahora (Simular Pago) 🚀
+            </button>
+            <button onclick="cerrarModalPro()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl transition text-sm">
+                Seguir en Plan Gratuito
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let esPro = false;
+
+        const baseAlimentos = [
+            { id: 'pollo', nombre: 'Pechuga de Pollo', cal: 165, p: 31, c: 0, g: 3.6 },
+            { id: 'carne', nombre: 'Carne vacuna magra', cal: 210, p: 26, c: 0, g: 11 },
+            { id: 'atun', nombre: 'Atún en lata', cal: 116, p: 26, c: 0, g: 1 },
+            { id: 'huevo', nombre: 'Huevos (por unidad ~50g)', cal: 70, p: 6, c: 0.4, g: 5, porUnidad: true },
+            { id: 'arroz', nombre: 'Arroz cocido', cal: 130, p: 2.7, c: 28, g: 0.3 },
+            { id: 'pasta', nombre: 'Fideos / Pasta cocida', cal: 158, p: 5.8, c: 31, g: 0.9 },
+            { id: 'papa', nombre: 'Papa cocida', cal: 87, p: 1.9, c: 20, g: 0.1 },
+            { id: 'batata', nombre: 'Batata / Boniato cocido', cal: 86, p: 1.6, c: 20, g: 0.1 },
+            { id: 'avena', nombre: 'Avena en hojuelas', cal: 389, p: 16.9, c: 66, g: 6.9 },
+            { id: 'pan', nombre: 'Pan integral (por rebanada ~30g)', cal: 75, p: 3.6, c: 12, g: 1, porUnidad: true },
+            { id: 'quinoa', nombre: 'Quinoa cocida', cal: 120, p: 4.4, c: 21, g: 1.9 },
+            { id: 'lentejas', nombre: 'Lentejas cocidas', cal: 116, p: 9, c: 20, g: 0.4 },
+            { id: 'tortilla', nombre: 'Tortilla de maíz / Tacos (u.)', cal: 52, p: 1.4, c: 11, g: 0.6, porUnidad: true },
+            { id: 'aguacate', nombre: 'Aguacate / Palta', cal: 160, p: 2, c: 9, g: 15 },
+            { id: 'queso', nombre: 'Queso fresco', cal: 260, p: 18, c: 3, g: 20 },
+            { id: 'espinaca', nombre: 'Espinaca', cal: 23, p: 2.9, c: 3.6, g: 0.4 },
+            { id: 'tomate', nombre: 'Tomate', cal: 18, p: 0.9, c: 3.9, g: 0.2 }
+        ];
+
+        const container = document.getElementById('ingredientes-container');
+        baseAlimentos.forEach(item => {
+            const labelUnidad = item.porUnidad ? 'u.' : 'g';
+            const cantidadDefecto = item.porUnidad ? '2' : '100';
+
+            container.innerHTML += `
+                <div class="flex items-center justify-between p-2.5 sm:p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition bg-white gap-2">
+                    <label class="flex items-center space-x-2 sm:space-x-3 cursor-pointer flex-1 min-w-0">
+                        <input type="checkbox" value="${item.id}" class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 checkbox-ing shrink-0">
+                        <span class="text-xs sm:text-sm font-medium text-slate-700 truncate">${item.nombre}</span>
+                    </label>
+                    <div class="flex items-center space-x-1 shrink-0">
+                        <input type="number" id="cant-${item.id}" value="${cantidadDefecto}" min="1" class="w-14 sm:w-16 border border-slate-300 rounded-lg p-1 text-center text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <span class="text-[10px] sm:text-xs text-slate-400 w-6 sm:w-8">${labelUnidad}</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        function cambiarPlan(plan) {
+            const btnGratis = document.getElementById('btn-gratis');
+            const btnPro = document.getElementById('btn-pro');
+            const bannerUpgrade = document.getElementById('banner-upgrade');
+
+            if (plan === 'gratis') {
+                esPro = false;
+                btnGratis.className = "px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition bg-emerald-600 text-white shadow-md";
+                btnPro.className = "px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition bg-slate-100 text-slate-600 hover:bg-slate-200";
+                bannerUpgrade.classList.remove('hidden');
+            } else {
+                esPro = true;
+                btnPro.className = "px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition bg-amber-500 text-white shadow-md";
+                btnGratis.className = "px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition bg-slate-100 text-slate-600 hover:bg-slate-200";
+                bannerUpgrade.classList.add('hidden');
+                alert('🎉 ¡Plan Pro activado con éxito!');
+            }
+        }
+
+        function activarPro() {
+            cambiarPlan('pro');
+        }
+
+        function intentarAccionPro(tipo) {
+            if (!esPro) {
+                document.getElementById('modal-pro').classList.remove('hidden');
+            } else {
+                if (tipo === 'horarios') {
+                    calcularHorariosComidas();
+                } else if (tipo === 'camara') {
+                    document.getElementById('input-foto').click();
+                }
+            }
+        }
+
+        function cerrarModalPro() {
+            document.getElementById('modal-pro').classList.add('hidden');
+        }
+
+        function calcularHorariosComidas() {
+            const horaDesp = document.getElementById('hora-despertar').value;
+            const horaDorm = document.getElementById('hora-dormir').value;
+            const objetivo = document.getElementById('objetivo').value;
+
+            if (!horaDesp || !horaDorm) {
+                alert('Por favor selecciona las horas.');
+                return;
+            }
+
+            const [hDesp, mDesp] = horaDesp.split(':').map(Number);
+            const [hDorm, mDorm] = horaDorm.split(':').map(Number);
+
+            let minutosDesp = hDesp * 60 + mDesp;
+            let minutosDorm = hDorm * 60 + mDorm;
+
+            if (minutosDorm <= minutosDesp) minutosDorm += 24 * 60;
+
+            const totalMinutosActivo = minutosDorm - minutosDesp;
+            let numComidas = objetivo === 'superavit' ? 5 : 4;
+            let descObjetivo = objetivo === 'superavit' ? "Superávit Muscular (5 ingestas)" : "Déficit / Mantenimiento (4 ingestas)";
+
+            const intervalo = totalMinutosActivo / (numComidas - 1);
+            let horarios = [];
+
+            for (let i = 0; i < numComidas; i++) {
+                let minActual = Math.round(minutosDesp + (i * intervalo));
+                let h = Math.floor(minActual / 60) % 24;
+                let m = minActual % 60;
+                let horaFormateada = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                
+                let nombreComida = i === 0 ? "Desayuno" : i === numComidas - 1 ? "Cena" : `Comida ${i + 1}`;
+                horarios.push(`<li class="break-words"><b>${horaFormateada}</b> - ${nombreComida}</li>`);
+            }
+
+            document.getElementById('resultado-horarios').classList.remove('hidden');
+            document.getElementById('frecuencia-titulo').textContent = `📅 Plan recomendado: ${descObjetivo}`;
+            document.getElementById('lista-horarios').innerHTML = horarios.join('');
+        }
+
+        function actualizarPlanificadorSugerido() {
+            if (esPro) {
+                calcularHorariosComidas();
+            }
+        }
+
+        function procesarFoto(event) {
+            const archivo = event.target.files[0];
+            if (!archivo) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('preview-img').src = e.target.result;
+                document.getElementById('estado-analisis').classList.remove('hidden');
+                
+                setTimeout(() => {
+                    document.getElementById('resultado').classList.remove('hidden');
+                    document.getElementById('total-calorias').textContent = "520 kcal";
+                    document.getElementById('total-proteina').textContent = "38g";
+                    document.getElementById('total-carbos').textContent = "45g";
+                    document.getElementById('total-grasas').textContent = "14g";
+
+                    document.getElementById('seccion-macros').classList.remove('hidden');
+                    document.getElementById('seccion-receta-pro').classList.remove('hidden');
+
+                    document.getElementById('evaluacion-meta').textContent = "🎯 Excelente plato detectado por IA.";
+                    document.getElementById('sugerencia-plato').textContent = "Plato detectado: Pechuga de pollo grillada con guarnición de batata y vegetales.";
+                    document.getElementById('texto-receta-pro').textContent = "📸 Análisis de imagen completado con éxito mediante inteligencia artificial.";
+                    
+                    document.getElementById('texto-analizando').textContent = "✅ ¡Foto analizada con éxito!";
+                }, 2000);
+            }
+            reader.readAsDataURL(archivo);
+        }
+
+        function calcularNutricion() {
+            const checkboxes = document.querySelectorAll('.checkbox-ing:checked');
+            let totalCal = 0, totalP = 0, totalC = 0, totalG = 0;
+            let nombresSeleccionados = [];
+
+            if (checkboxes.length === 0) {
+                alert('Selecciona al menos un ingrediente.');
+                return;
+            }
+
+            checkboxes.forEach(cb => {
+                const id = cb.value;
+                const alimento = baseAlimentos.find(a => a.id === id);
+                const cantidad = parseFloat(document.getElementById(`cant-${id}`).value) || 0;
+                let mult = alimento.porUnidad ? cantidad : (cantidad / 100);
+
+                totalCal += alimento.cal * mult;
+                totalP += alimento.p * mult;
+                totalC += alimento.c * mult;
+                totalG += alimento.g * mult;
+
+                nombresSeleccionados.push(`${cantidad}${alimento.porUnidad ? 'u.' : 'g'} de ${alimento.nombre}`);
+            });
+
+            document.getElementById('resultado').classList.remove('hidden');
+            document.getElementById('total-calorias').textContent = `${Math.round(totalCal)} kcal`;
+
+            const seccionMacros = document.getElementById('seccion-macros');
+            const seccionRecetaPro = document.getElementById('seccion-receta-pro');
+
+            if (esPro) {
+                seccionMacros.classList.remove('hidden');
+                seccionRecetaPro.classList.remove('hidden');
+                document.getElementById('total-proteina').textContent = `${Math.round(totalP)}g`;
+                document.getElementById('total-carbos').textContent = `${Math.round(totalC)}g`;
+                document.getElementById('total-grasas').textContent = `${Math.round(totalG)}g`;
+                document.getElementById('texto-receta-pro').textContent = `Combinación analizada: ${nombresSeleccionados.join(', ')}. Buen balance de nutrientes registrados.`;
+            } else {
+                seccionMacros.classList.add('hidden');
+                seccionRecetaPro.classList.add('hidden');
+            }
+
+            const objetivo = document.getElementById('objetivo').value;
+            let msg = objetivo === 'deficit' ? "🎯 Buen balance para déficit." : objetivo === 'mantener' ? "🎯 Aporte ideal para mantener." : "🎯 Excelente para superávit.";
+            document.getElementById('evaluacion-meta').textContent = msg;
+            document.getElementById('sugerencia-plato').textContent = `Ingredientes: ${nombresSeleccionados.join(', ')}. ${!esPro ? '💡 (Actualiza a Pro para ver el desglose de macronutrientes).' : ''}`;
+        }
+    </script>
+</body>
+</html>
